@@ -1,0 +1,81 @@
+name: dbt CI (Slim)
+
+on:
+  pull_request:
+    branches: [main, staging]
+    paths:
+      - 'dbt/**'
+      - '.github/workflows/dbt_ci.yml'
+
+concurrency:
+  group: dbt-ci-${{ github.head_ref }}
+  cancel-in-progress: true
+
+env:
+  DBT_PROFILES_DIR: ./dbt
+  SNOWFLAKE_ACCOUNT:      ${{ secrets.SNOWFLAKE_ACCOUNT }}
+  SNOWFLAKE_CI_USER:      ${{ secrets.SNOWFLAKE_CI_USER }}
+  SNOWFLAKE_CI_PASSWORD:  ${{ secrets.SNOWFLAKE_CI_PASSWORD }}
+  DBT_CI_PR_ID: ${{ github.event.pull_request.number }}
+
+jobs:
+
+  lint:
+    name: Lint SQL & YAML
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: pip install sqlfluff sqlfluff-templater-dbt dbt-snowflake==1.8.*
+      - working-directory: ./dbt
+        run: dbt deps
+      - name: Lint changed files
+        run: |
+          git fetch origin ${{ github.base_ref }}
+          FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- 'dbt/models/**/*.sql')
+          if [ -n "$FILES" ]; then sqlfluff lint $FILES; fi
+
+  slim-ci:
+    name: Slim CI build
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: pip install dbt-snowflake==1.12.*
+
+      - name: Restore prod manifest
+        uses: actions/download-artifact@v4
+        with:
+          name: manifest-blue
+          path: prod-artifacts/
+        continue-on-error: true
+
+      - working-directory: ./dbt
+        run: |
+          dbt deps
+          dbt build \
+            --target ci \
+            --select "state:modified+" \
+            --defer --state ../prod-artifacts \
+            --fail-fast
+
+  cleanup:
+    name: Cleanup CI schema
+    if: always()
+    needs: slim-ci
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - run: pip install dbt-snowflake==1.8.*
+      - working-directory: ./dbt
+        run: |
+          dbt deps
+          dbt run-operation drop_schema \
+            --target ci \
+            --args "{schema_name: CI_${{ github.event.pull_request.number }}}"
