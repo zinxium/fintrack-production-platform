@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  DBT_PROFILES_DIR: ./dbt
+  DBT_PROFILES_DIR: ${{ github.workspace }}/dbt
   SNOWFLAKE_ACCOUNT:      ${{ secrets.SNOWFLAKE_ACCOUNT }}
   SNOWFLAKE_CI_USER:      ${{ secrets.SNOWFLAKE_CI_USER }}
   SNOWFLAKE_CI_PASSWORD:  ${{ secrets.SNOWFLAKE_CI_PASSWORD }}
@@ -29,7 +29,9 @@ jobs:
         with: {python-version: '3.11'}
       - run: pip install sqlfluff sqlfluff-templater-dbt dbt-snowflake==1.8.*
       - working-directory: ./dbt
-        run: dbt deps
+        run: |
+          cp profiles.yml.example profiles.yml
+          dbt deps
       - name: Lint changed files
         run: |
           git fetch origin ${{ github.base_ref }}
@@ -56,6 +58,7 @@ jobs:
 
       - working-directory: ./dbt
         run: |
+          cp profiles.yml.example profiles.yml
           dbt deps
           dbt build \
             --target ci \
@@ -75,6 +78,7 @@ jobs:
       - run: pip install dbt-snowflake==1.8.*
       - working-directory: ./dbt
         run: |
+          cp profiles.yml.example profiles.yml
           dbt deps
           dbt run-operation drop_schema \
             --target ci \
