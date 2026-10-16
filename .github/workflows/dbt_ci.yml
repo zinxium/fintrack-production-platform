@@ -68,11 +68,16 @@ jobs:
               --defer --state ../prod-artifacts \
               --fail-fast
           else
-            echo "No prod manifest — full build"
-            dbt build \
-              --target ci \
-              --exclude resource_type:snapshot \
-              --fail-fast
+            if [ -n "$SNOWFLAKE_CI_USER" ] && [ -n "$SNOWFLAKE_CI_PASSWORD" ]; then
+              echo "No prod manifest — full build"
+              dbt build \
+                --target ci \
+                --exclude resource_type:snapshot \
+                --fail-fast
+            else
+              echo "No Snowflake credentials — compile only"
+              dbt compile --target ci
+            fi
           fi
 
   cleanup:
