@@ -75,8 +75,8 @@ jobs:
                 --exclude resource_type:snapshot \
                 --fail-fast
             else
-              echo "No Snowflake credentials — compile only"
-              dbt compile --target ci
+              echo "No Snowflake credentials — parse only"
+              dbt parse --target ci
             fi
           fi
 
