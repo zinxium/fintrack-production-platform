@@ -95,6 +95,10 @@ jobs:
       - working-directory: ./dbt
         run: |
           cp profiles.yml.example profiles.yml
+          if [ -z "$SNOWFLAKE_CI_USER" ] || [ -z "$SNOWFLAKE_CI_PASSWORD" ]; then
+            echo "No Snowflake credentials — skipping schema cleanup"
+            exit 0
+          fi
           dbt deps
           dbt run-operation drop_schema \
             --target ci \
