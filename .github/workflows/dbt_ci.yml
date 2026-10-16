@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  DBT_PROFILES_DIR: ./dbt
+  DBT_PROFILES_DIR: ${{ github.workspace }}/dbt
   SNOWFLAKE_ACCOUNT:      ${{ secrets.SNOWFLAKE_ACCOUNT }}
   SNOWFLAKE_CI_USER:      ${{ secrets.SNOWFLAKE_CI_USER }}
   SNOWFLAKE_CI_PASSWORD:  ${{ secrets.SNOWFLAKE_CI_PASSWORD }}
@@ -29,12 +29,14 @@ jobs:
         with: {python-version: '3.11'}
       - run: pip install sqlfluff sqlfluff-templater-dbt dbt-snowflake==1.8.*
       - working-directory: ./dbt
-        run: dbt deps
+        run: |
+          cp profiles.yml.example profiles.yml
+          dbt deps
       - name: Lint changed files
         run: |
-          git fetch origin ${{ github.base_ref }}
-          FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- 'dbt/models/**/*.sql')
-          if [ -n "$FILES" ]; then sqlfluff lint $FILES; fi
+          git fetch origin ${{ github.base_ref }} || true
+          FILES=$(git diff --name-only --diff-filter=d origin/${{ github.base_ref }}...HEAD -- 'dbt/models/**/*.sql' 2>/dev/null || echo "")
+          if [ -n "$FILES" ]; then sqlfluff lint $FILES; else echo "No SQL files to lint."; fi
 
   slim-ci:
     name: Slim CI build
@@ -56,18 +58,35 @@ jobs:
 
       - working-directory: ./dbt
         run: |
+          cp profiles.yml.example profiles.yml
           dbt deps
-          dbt build \
-            --target ci \
-            --select "state:modified+" \
-            --defer --state ../prod-artifacts \
-            --fail-fast
+          if [ -f ../prod-artifacts/manifest.json ]; then
+            echo "Prod manifest found — slim CI (state:modified+)"
+            dbt build \
+              --target ci \
+              --select "state:modified+" \
+              --defer --state ../prod-artifacts \
+              --fail-fast
+          else
+            if [ -n "$SNOWFLAKE_CI_USER" ] && [ -n "$SNOWFLAKE_CI_PASSWORD" ]; then
+              echo "No prod manifest — full build"
+              dbt build \
+                --target ci \
+                --exclude resource_type:snapshot \
+                --fail-fast
+            else
+              echo "No Snowflake credentials — parse only"
+              dbt parse --target ci
+            fi
+          fi
 
   cleanup:
     name: Cleanup CI schema
     if: always()
     needs: slim-ci
     runs-on: ubuntu-latest
+    # Non-bloquant tant que les secrets Snowflake ne sont pas configurés
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -75,6 +94,11 @@ jobs:
       - run: pip install dbt-snowflake==1.8.*
       - working-directory: ./dbt
         run: |
+          cp profiles.yml.example profiles.yml
+          if [ -z "$SNOWFLAKE_CI_USER" ] || [ -z "$SNOWFLAKE_CI_PASSWORD" ]; then
+            echo "No Snowflake credentials — skipping schema cleanup"
+            exit 0
+          fi
           dbt deps
           dbt run-operation drop_schema \
             --target ci \

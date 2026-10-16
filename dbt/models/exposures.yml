@@ -11,7 +11,6 @@ exposures:
       Rafraîchi quotidiennement via l'API Power BI depuis Snowflake.
     depends_on:
       - ref('vw_transactions_summary')
-      - ref('mart_tenant_kpis_daily')
       - ref('dim_tenants')
     owner:
       name: BI Team
@@ -24,7 +23,6 @@ exposures:
     description: "Suivi AML/Fraud pour équipe compliance"
     depends_on:
       - ref('fct_transactions')
-      - ref('mart_reconciliation')
     owner:
       name: Compliance Team
       email: compliance@fintrack.example
@@ -38,7 +36,6 @@ exposures:
       Utilise change tracking pour n'envoyer que les deltas.
     depends_on:
       - ref('dim_comptes')
-      - ref('mart_tenant_kpis_daily')
     owner:
       name: Growth Team
       email: growth@fintrack.example
@@ -48,7 +45,6 @@ exposures:
     type: dashboard
     maturity: medium
     depends_on:
-      - ref('mart_reconciliation')
       - ref('vw_transactions_summary')
     owner:
       name: Operations

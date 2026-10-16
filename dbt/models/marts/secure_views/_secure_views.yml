@@ -14,3 +14,6 @@ models:
     description: |
       Vue agrégée jour x compte x catégorie sans PII.
       Grain optimisé pour dashboarding Power BI.
+    columns:
+      - name: tenant_id
+        tests: [not_null]

@@ -11,14 +11,16 @@
     -#}
 
     {% set masking_map = {
-        'email':          'mask_email',
-        'nom_client':     'mask_name',
-        'prenom_client':  'mask_name',
-        'telephone':      'mask_phone',
-        'iban':           'mask_iban',
-        'ip_address':     'mask_ip_address',
-        'device_id':      'mask_device_id',
-        'date_naissance': 'mask_date_of_birth'
+        'email':           'mask_email',
+        'nom_client':      'mask_name',
+        'prenom_client':   'mask_name',
+        'telephone':       'mask_phone',
+        'iban':            'mask_iban',
+        'ip_address':      'mask_ip_address',
+        'device_id':       'mask_device_id',
+        'date_naissance':  'mask_date_of_birth',
+        'adresse_ligne1':  'mask_address',
+        'adresse_ligne2':  'mask_address'
     } %}
 
     {% set columns_query %}
