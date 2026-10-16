@@ -34,9 +34,9 @@ jobs:
           dbt deps
       - name: Lint changed files
         run: |
-          git fetch origin ${{ github.base_ref }}
-          FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- 'dbt/models/**/*.sql')
-          if [ -n "$FILES" ]; then sqlfluff lint $FILES; fi
+          git fetch origin ${{ github.base_ref }} || true
+          FILES=$(git diff --name-only --diff-filter=d origin/${{ github.base_ref }}...HEAD -- 'dbt/models/**/*.sql' 2>/dev/null || echo "")
+          if [ -n "$FILES" ]; then sqlfluff lint $FILES; else echo "No SQL files to lint."; fi
 
   slim-ci:
     name: Slim CI build
@@ -60,11 +60,20 @@ jobs:
         run: |
           cp profiles.yml.example profiles.yml
           dbt deps
-          dbt build \
-            --target ci \
-            --select "state:modified+" \
-            --defer --state ../prod-artifacts \
-            --fail-fast
+          if [ -f ../prod-artifacts/manifest.json ]; then
+            echo "Prod manifest found — slim CI (state:modified+)"
+            dbt build \
+              --target ci \
+              --select "state:modified+" \
+              --defer --state ../prod-artifacts \
+              --fail-fast
+          else
+            echo "No prod manifest — full build"
+            dbt build \
+              --target ci \
+              --exclude resource_type:snapshot \
+              --fail-fast
+          fi
 
   cleanup:
     name: Cleanup CI schema

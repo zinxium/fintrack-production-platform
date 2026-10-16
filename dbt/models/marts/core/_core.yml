@@ -31,21 +31,29 @@ models:
                 to: ref('dim_tenants')
                 field: tenant_id
       - name: nom_client
-        meta: {pii: true, pii_type: name, masking_policy: mask_name}
+        config:
+          meta: {pii: true, pii_type: name, masking_policy: mask_name}
       - name: prenom_client
-        meta: {pii: true, pii_type: name, masking_policy: mask_name}
+        config:
+          meta: {pii: true, pii_type: name, masking_policy: mask_name}
       - name: email
-        meta: {pii: true, pii_type: email, masking_policy: mask_email}
+        config:
+          meta: {pii: true, pii_type: email, masking_policy: mask_email}
       - name: telephone
-        meta: {pii: true, pii_type: phone, masking_policy: mask_phone}
+        config:
+          meta: {pii: true, pii_type: phone, masking_policy: mask_phone}
       - name: date_naissance
-        meta: {pii: true, pii_type: date_of_birth, masking_policy: mask_date_of_birth}
+        config:
+          meta: {pii: true, pii_type: date_of_birth, masking_policy: mask_date_of_birth}
       - name: iban
-        meta: {pii: true, pii_type: iban, masking_policy: mask_iban}
+        config:
+          meta: {pii: true, pii_type: iban, masking_policy: mask_iban}
       - name: adresse_ligne1
-        meta: {pii: true, pii_type: address, masking_policy: mask_address}
+        config:
+          meta: {pii: true, pii_type: address, masking_policy: mask_address}
       - name: adresse_ligne2
-        meta: {pii: true, pii_type: address, masking_policy: mask_address}
+        config:
+          meta: {pii: true, pii_type: address, masking_policy: mask_address}
       - name: statut
         tests:
           - accepted_values:
